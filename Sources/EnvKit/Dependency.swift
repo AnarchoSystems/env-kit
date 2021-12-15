@@ -112,38 +112,66 @@ public extension AutoEnvValue {
 // MARK: Int, Double, String
 
 
-extension String : EnvironmentValue {
+public protocol SizeCappedString : EnvironmentValue, LosslessStringConvertible {
     
-    public static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
-        db.eventLoop.future(.rawString(maxLength: nil))
+    static var maxSize : Int? {get}
+    
+}
+
+extension String : SizeCappedString, EnvironmentValue {
+    
+    public static let maxSize: Int? = nil
+    
+}
+
+public extension SizeCappedString {
+    
+    static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
+        db.eventLoop.future(.rawString(maxLength: maxSize))
     }
     
 }
 
-public extension Dependency where Value == String {
+public extension Dependency where Value : SizeCappedString {
     
     static func inject(from representation: Representation.Kind,
                        env: InferredEnv,
                        db: Database) -> EventLoopFuture<Value> {
         
-        guard case .rawString(let str) = representation else {
-            fatalError()
-        }
-        return db.eventLoop.future(str)
+        guard
+            case .rawString(let str) = representation,
+            let val = Value(str) else {
+                fatalError()
+            }
+        return db.eventLoop.future(val)
         
     }
     
 }
 
-extension Int : EnvironmentValue {
+
+public protocol RangedInt : EnvironmentValue {
     
-    public static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
-        db.eventLoop.future(.int(range: nil))
+    static var range : ClosedRange<Int>? {get}
+    init(_ intValue: Int)
+    
+}
+
+extension Int : RangedInt, EnvironmentValue {
+    
+    public static let range : ClosedRange<Int>? = nil
+    
+}
+
+public extension RangedInt {
+    
+    static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
+        db.eventLoop.future(.int(range: range))
     }
     
 }
 
-public extension Dependency where Value == Int {
+public extension Dependency where Value : RangedInt {
     
     static func inject(from representation: Representation.Kind,
                        env: InferredEnv,
@@ -152,22 +180,37 @@ public extension Dependency where Value == Int {
         guard case .int(let int) = representation else {
             fatalError()
         }
-        return db.eventLoop.future(int)
+        return db.eventLoop.future(.init(int))
         
     }
     
 }
 
 
-extension Double : EnvironmentValue {
+public protocol RangedDouble : EnvironmentValue {
     
-    public static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
+    static var range : ClosedRange<Double>? {get}
+    init(_ double: Double)
+    
+}
+
+
+extension Double : RangedDouble {
+    
+    public static let range : ClosedRange<Double>? = nil
+    
+}
+
+
+public extension RangedDouble {
+    
+    static func requirements(db: Database) -> EventLoopFuture<RepresentationRequirements.Kind> {
         db.eventLoop.future(.double(range: nil))
     }
     
 }
 
-public extension Dependency where Value == Double {
+public extension Dependency where Value : RangedDouble {
     
     static func inject(from representation: Representation.Kind,
                        env: InferredEnv,
@@ -176,7 +219,7 @@ public extension Dependency where Value == Double {
         guard case .double(let num) = representation else {
             fatalError()
         }
-        return db.eventLoop.future(num)
+        return db.eventLoop.future(.init(num))
         
     }
     
