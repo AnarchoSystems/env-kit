@@ -109,3 +109,34 @@ public extension Representation.Kind {
     }
     
 }
+
+
+public extension RepresentationRequirements {
+    
+    var emptyRepresentation : Representation {
+        
+        Representation(name: name, kind: kind.emptyRepresentation)
+        
+    }
+    
+}
+
+
+public extension RepresentationRequirements.Kind {
+    
+    var emptyRepresentation : Representation.Kind {
+        
+        switch self {
+        case .int, .double, .rawString, .selection, .list, .optional:
+            return  .empty
+        case .id(let id):
+            return .id(id: id)
+        case .cons(let reqs):
+            return .cons(reqs.map(\.emptyRepresentation))
+        case .auto:
+            return .auto
+        }
+        
+    }
+    
+}
